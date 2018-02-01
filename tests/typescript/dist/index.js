@@ -213,7 +213,6 @@ function defaults(dest, source) {
     }
     return dest;
 }
-Object.setPrototypeOf || (Object.setPrototypeOf = defaults);
 
 function once$1(func) {
     var memo, first = true;

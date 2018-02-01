@@ -268,7 +268,7 @@ declare global {
     }
 }
 
-Object.setPrototypeOf || ( Object.setPrototypeOf = defaults ); 
+//Object.setPrototypeOf || ( Object.setPrototypeOf = defaults ); 
 
 /** Similar to underscore `_.keys` */
 export function keys( o : any ) : string[]{

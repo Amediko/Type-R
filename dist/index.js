@@ -235,7 +235,6 @@ function defaults(dest, source) {
     }
     return dest;
 }
-Object.setPrototypeOf || (Object.setPrototypeOf = defaults);
 function keys(o) {
     return o ? Object.keys(o) : [];
 }
