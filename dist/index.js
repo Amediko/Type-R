@@ -55,6 +55,20 @@ function __decorate(decorators, target, key, desc) {
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 }
 
+function defaults(dest, source) {
+    for (var name in source) {
+        if (source.hasOwnProperty(name) && !dest.hasOwnProperty(name)) {
+            dest[name] = source[name];
+        }
+    }
+    if (arguments.length > 2) {
+        for (var i = 2; i < arguments.length; i++) {
+            var other = arguments[i];
+            other && defaults(dest, other);
+        }
+    }
+    return dest;
+}
 var levelToNumber = {
     none: 0, error: 1, warn: 2, info: 3, log: 4, debug: 5
 };
@@ -86,11 +100,20 @@ var log = function (a_level, a_msg, a_props) {
 log.level = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production' ? 1 : 2;
 log.throw = 0;
 log.stop = 0;
+var toString = typeof window === 'undefined' ?
+    function toString(something) {
+        if (something && typeof something === 'object') {
+            var value = something.__inner_state__ || something, isTransactional = Boolean(something.__inner_state__), isArray = Array.isArray(value);
+            var keys_1 = Object.keys(value).join(', '), body = isArray ? "[ length = " + value.length + " ]" : "{ " + keys_1 + " }";
+            return something.constructor.name + ' ' + body;
+        }
+        return something;
+    } : function toString(x) { return x; };
 if (typeof console !== 'undefined') {
     log.logger = function _console(level, error, props) {
         var args = [error];
         for (var name_1 in props) {
-            args.push("\n\t" + name_1 + ":", props[name_1]);
+            args.push("\n\t" + name_1 + ":", toString(props[name_1]));
         }
         console[level].apply(console, args);
     };
@@ -221,20 +244,6 @@ function assign(dest, source) {
     }
     return dest;
 }
-function defaults(dest, source) {
-    for (var name in source) {
-        if (source.hasOwnProperty(name) && !dest.hasOwnProperty(name)) {
-            dest[name] = source[name];
-        }
-    }
-    if (arguments.length > 2) {
-        for (var i = 2; i < arguments.length; i++) {
-            var other = arguments[i];
-            other && defaults(dest, other);
-        }
-    }
-    return dest;
-}
 function keys(o) {
     return o ? Object.keys(o) : [];
 }
@@ -299,6 +308,7 @@ function hashMap(obj) {
 
 
 var tools = Object.freeze({
+	defaults: defaults,
 	log: log,
 	isValidJSON: isValidJSON,
 	getBaseClass: getBaseClass,
@@ -312,7 +322,6 @@ var tools = Object.freeze({
 	fastAssign: fastAssign,
 	fastDefaults: fastDefaults,
 	assign: assign,
-	defaults: defaults,
 	keys: keys,
 	once: once$1,
 	notEqual: notEqual,
@@ -380,6 +389,13 @@ function definitions(rules) {
         mixins.definitionRules = defaults(hashMap(), rules, mixins.definitionRules);
     };
 }
+function propertyListDecorator(listName) {
+    return function propList(proto, name) {
+        var list = proto.hasOwnProperty(listName) ?
+            proto[listName] : (proto[listName] = (proto[listName] || []).slice());
+        list.push(name);
+    };
+}
 function definitionDecorator(definitionKey, value) {
     return function (proto, name) {
         MixinsState
@@ -423,9 +439,6 @@ var MixinsState = (function () {
             else if (appliedMixins.indexOf(mixin) < 0) {
                 appliedMixins.push(mixin);
                 if (typeof mixin === 'function') {
-                    if (getBaseClass(mixin) !== Object) {
-                        console.log('Mixin error');
-                    }
                     this.mergeObject(this.Class, mixin);
                     var sourceMixins = mixin.mixins;
                     if (sourceMixins) {
@@ -493,7 +506,7 @@ var dontMix = {
 };
 function forEachOwnProp(object, fun) {
     var ignore = dontMix[typeof object];
-    for (var _i = 0, _a = Object.getOwnPropertyNames(object); _i < _a.length; _i++) {
+    for (var _i = 0, _a = Object.keys(object); _i < _a.length; _i++) {
         var name_2 = _a[_i];
         ignore[name_2] || fun(name_2);
     }
@@ -968,6 +981,16 @@ function resolveReference(root, reference, action) {
     return action(self, path[skip]);
 }
 
+function getOwnerEndpoint$1(self) {
+    var collection = self.collection;
+    if (collection) {
+        return getOwnerEndpoint$1(collection);
+    }
+    if (self._owner) {
+        var _endpoints = self._owner._endpoints;
+        return _endpoints && _endpoints[self._ownerKey];
+    }
+}
 function createIOPromise(initialize) {
     var resolve, reject, onAbort;
     function abort(fn) {
@@ -1600,6 +1623,11 @@ var ChainableAttributeSpec = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(ChainableAttributeSpec.prototype, "as", {
+        get: function () { return this.asProp; },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(ChainableAttributeSpec.prototype, "isRequired", {
         get: function () {
             return this.metadata({ isRequired: true });
@@ -1666,9 +1694,36 @@ var ChainableAttributeSpec = (function () {
     ChainableAttributeSpec.prototype.value = function (x) {
         return this.metadata({ value: x, hasCustomDefault: true });
     };
+    ChainableAttributeSpec.from = function (spec) {
+        var attrSpec;
+        if (typeof spec === 'function') {
+            attrSpec = spec.has;
+        }
+        else if (spec && spec instanceof ChainableAttributeSpec) {
+            attrSpec = spec;
+        }
+        else {
+            var type_1 = inferType(spec);
+            if (type_1 && type_1.prototype instanceof Transactional) {
+                attrSpec = type_1.shared.value(spec);
+            }
+            else {
+                attrSpec = new ChainableAttributeSpec({ type: type_1, value: spec, hasCustomDefault: true });
+            }
+        }
+        return attrSpec;
+    };
     return ChainableAttributeSpec;
 }());
 function emptyFunction() { }
+function type(spec) {
+    return spec instanceof ChainableAttributeSpec ? spec : new ChainableAttributeSpec({
+        type: spec,
+        value: spec._attribute.defaultValue,
+        hasCustomDefault: spec._attribute.defaultValue !== void 0
+    });
+    
+}
 Function.prototype.value = function (x) {
     return new ChainableAttributeSpec({ type: this, value: x, hasCustomDefault: true });
 };
@@ -1681,33 +1736,10 @@ Object.defineProperty(Function.prototype, 'asProp', {
 });
 Object.defineProperty(Function.prototype, 'has', {
     get: function () {
-        return this._has || new ChainableAttributeSpec({
-            type: this,
-            value: this._attribute.defaultValue,
-            hasCustomDefault: this._attribute.defaultValue !== void 0
-        });
+        return this._has || type(this);
     },
     set: function (value) { this._has = value; }
 });
-function toAttributeOptions(spec) {
-    var attrSpec;
-    if (typeof spec === 'function') {
-        attrSpec = spec.has;
-    }
-    else if (spec && spec instanceof ChainableAttributeSpec) {
-        attrSpec = spec;
-    }
-    else {
-        var type = inferType(spec);
-        if (type && type.prototype instanceof Transactional) {
-            attrSpec = type.shared.value(spec);
-        }
-        else {
-            attrSpec = new ChainableAttributeSpec({ type: type, value: spec, hasCustomDefault: true });
-        }
-    }
-    return attrSpec.options;
-}
 function inferType(value) {
     switch (typeof value) {
         case 'number':
@@ -2081,7 +2113,7 @@ var compile = function (attributesDefinition, baseClassAttributes) {
     return __assign({}, ConstructorsMixin, { _attributes: new ConstructorsMixin.AttributesCopy(allAttributes), _attributesArray: Object.keys(allAttributes).map(function (key) { return allAttributes[key]; }), properties: transform({}, myAttributes, function (x) { return x.createPropertyDescriptor(); }), _toJSON: createToJSON(allAttributes) }, parseMixin(allAttributes), localEventsMixin(myAttributes), { _endpoints: transform({}, allAttributes, function (attrDef) { return attrDef.options.endpoint; }) });
 };
 function createAttribute(spec, name) {
-    return AnyType.create(toAttributeOptions(spec), name);
+    return AnyType.create(ChainableAttributeSpec.from(spec).options, name);
 }
 function parseMixin(attributes) {
     var attrsWithParse = Object.keys(attributes).filter(function (name) { return attributes[name].parse; });
@@ -2165,6 +2197,7 @@ var IORecordMixin = {
             else {
                 _this.dispose();
             }
+            return _this;
         });
     }
 };
@@ -2531,7 +2564,7 @@ function attr(proto, attrName) {
         }
     }
     else {
-        return proto.asProp;
+        return ChainableAttributeSpec.from(proto).asProp;
     }
 }
 function prop(spec) {
@@ -3028,6 +3061,9 @@ var Collection = (function (_super) {
             fun(models[i], i);
         }
     };
+    Collection.prototype.forEach = function (iteratee, context) {
+        return this.each(iteratee, context);
+    };
     Collection.prototype.every = function (iteratee, context) {
         var fun = toPredicateFunction(iteratee, context), models = this.models;
         for (var i = 0; i < models.length; i++) {
@@ -3122,7 +3158,7 @@ var Collection = (function (_super) {
                 },
                 removed: function (id) { return _this.remove(id); }
             };
-            return this.getEndpoint().subscribe(this._liveUpdates, this);
+            return this.getEndpoint().subscribe(this._liveUpdates, this).then(function () { return _this; });
         }
         else {
             if (this._liveUpdates) {
@@ -3580,13 +3616,13 @@ exports.Class = Mixable;
 exports.attributes = attributes;
 exports.value = value;
 exports.transaction = transaction;
-exports.createIOPromise = createIOPromise;
 exports.tools = tools;
 exports.eventsApi = eventsource;
 exports.Mixable = Mixable;
 exports.predefine = predefine;
 exports.define = define;
 exports.definitions = definitions;
+exports.propertyListDecorator = propertyListDecorator;
 exports.definitionDecorator = definitionDecorator;
 exports.MixinsState = MixinsState;
 exports.mixins = mixins;
@@ -3619,9 +3655,14 @@ exports.constructorsMixin = constructorsMixin;
 exports.shouldBeAnObject = shouldBeAnObject;
 exports.RecordTransaction = RecordTransaction;
 exports.ChainableAttributeSpec = ChainableAttributeSpec;
-exports.toAttributeOptions = toAttributeOptions;
+exports.type = type;
 exports.Transactional = Transactional;
 exports.transactionApi = transactionApi;
+exports.getOwnerEndpoint = getOwnerEndpoint$1;
+exports.createIOPromise = createIOPromise;
+exports.startIO = startIO;
+exports.abortIO = abortIO;
+exports.triggerAndBubble = triggerAndBubble;
 
 Object.defineProperty(exports, '__esModule', { value: true });
 

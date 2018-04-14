@@ -10,11 +10,15 @@ export * from './attrDef'
 
 import { AnyType } from './any'
 import { ConstructorsMixin, constructorsMixin } from './updates'
-import { toAttributeOptions, ChainableAttributeSpec } from './attrDef'
+import { ChainableAttributeSpec } from './attrDef'
 import { CompiledReference } from '../../traversable'
 import { IOEndpoint } from '../../io-tools'
 
-export interface RecordAttributesMixin extends ConstructorsMixin {
+export interface ParseMixin {
+    _parse? : ( json : any ) => object
+}
+
+export interface RecordAttributesMixin extends ConstructorsMixin, ParseMixin {
     // Attributes descriptors
     _attributes : AttributeDescriptors
     _attributesArray : AnyType[]
@@ -56,10 +60,10 @@ export default function( attributesDefinition : object, baseClassAttributes : At
 
 // Create attribute from the type spec.
 export function createAttribute( spec : any, name : string ) : AnyType {
-    return AnyType.create( toAttributeOptions( spec ), name );
+    return AnyType.create( ChainableAttributeSpec.from( spec ).options, name );
 }
 
-function parseMixin( attributes : AttributeDescriptors ){
+function parseMixin( attributes : AttributeDescriptors ) : ParseMixin {
     const attrsWithParse = Object.keys( attributes ).filter( name => attributes[ name ].parse );
 
     return attrsWithParse.length ? {
@@ -72,7 +76,7 @@ function parseMixin( attributes : AttributeDescriptors ){
 
             return json;
         ` )
-    } : {};
+    } : {} as any;
 }
 
 function createToJSON( attributes : AttributeDescriptors ) : () => void {

@@ -1,6 +1,6 @@
 import { Record, RecordDefinition } from './record'
 import { Mixable, tools, predefine, define, MixinsState } from '../object-plus'
-import compile from './attributes'
+import compile, { ChainableAttributeSpec } from './attributes'
 import { Transactional } from '../transactions'
 
 import { createSharedTypeSpec, AggregatedType, MSDateType, TimestampType, NumericType, SharedType } from './attributes'
@@ -70,7 +70,9 @@ function getAttributes({ defaults, attributes, idAttribute } : RecordDefinition 
 
 declare var Reflect;
 
-export function attr( proto, attrName? ) : any {
+export function attr( proto : object, attrName : string ) : void;
+export function attr( spec : any ) : PropertyDecorator;
+export function attr( proto, attrName? : string ) : any {
     if( attrName ){
         // Called without the spec. Extract the type.
         if( typeof Reflect !== 'undefined' && Reflect.getMetadata ){
@@ -83,7 +85,7 @@ export function attr( proto, attrName? ) : any {
         }
     }
     else{
-        return proto.asProp;
+        return ChainableAttributeSpec.from( proto ).asProp;
     }
 }
 

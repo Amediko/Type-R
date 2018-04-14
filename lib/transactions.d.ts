@@ -11,6 +11,7 @@ export declare enum ItemsBehavior {
     persistent = 4,
 }
 export declare abstract class Transactional implements Messenger, IONode, Validatable, Traversable {
+    static endpoint: IOEndpoint;
     static __super__: object;
     static mixins: MixinsState;
     static define: (definition?: TransactionalDefinition, statics?: object) => typeof Transactional;
@@ -62,9 +63,9 @@ export declare abstract class Transactional implements Messenger, IONode, Valida
     abstract each(iteratee: (val: any, key: string | number) => void, context?: any): any;
     map<T>(iteratee: (val: any, key: string | number) => T, context?: any): T[];
     _endpoint: IOEndpoint;
-    _ioPromise: IOPromise<any>;
-    hasPendingIO(): IOPromise<any>;
-    fetch(options?: object): IOPromise<any>;
+    _ioPromise: IOPromise<this>;
+    hasPendingIO(): IOPromise<this>;
+    fetch(options?: object): IOPromise<this>;
     getEndpoint(): IOEndpoint;
     mapObject<T>(iteratee: (val: any, key: string | number) => T, context?: any): {
         [key: string]: T;

@@ -1,6 +1,6 @@
 import * as tslib_1 from "tslib";
 import "reflect-metadata";
-import { predefine, define, attr, Record, Collection } from '../../../lib';
+import { predefine, define, attr, Record, Collection } from 'type-r';
 import { expect } from 'chai';
 describe('Record', function () {
     it("can be instantiated", function () {
@@ -324,7 +324,6 @@ describe('Record', function () {
         it('Supports function type', function () {
             var t = new Test();
             var t2 = t.clone();
-            console.log('!!!', t._attributes);
             expect(t.fun).to.eql(t2.fun);
         });
     });

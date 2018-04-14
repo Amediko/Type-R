@@ -1,5 +1,5 @@
 import "reflect-metadata"
-import { predefine, define, attr, prop, Record, Store, Collection } from '../../../lib'
+import { predefine, define, attr, prop, Record, Store, Collection } from 'type-r'
 import { expect } from 'chai'
 
 describe( 'Record', () =>{
@@ -255,7 +255,6 @@ describe( 'Record', () =>{
             const t = new Test();
             const t2 = t.clone();
 
-            console.log( '!!!', t._attributes );
             expect( t.fun ).to.eql( t2.fun );
         } );
     });
